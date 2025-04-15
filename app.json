@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "saferides-app",
+    "slug": "saferides-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.saferides.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "googleMapsApiKey": "AIzaSyCD7fbDDTZTQnX9JrBO8kl0ZEuEcGdGfmA"
+    },
+    "plugins": ["expo-location"],
+    "newArchEnabled": true,
+    "jsEngine": "hermes",
+    "scheme": "saferides"
+  }
+}
+
