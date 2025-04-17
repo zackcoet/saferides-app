@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable, Image, Platform, Animated, Modal, TextInput, Alert, Linking } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { UserService, UserProfile } from '../services/UserService';
 
 const faqItems = [
   {
@@ -80,6 +81,8 @@ const ProfileScreen = () => {
   const cardFormAnimation = useRef(new Animated.Value(0)).current;
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Profile state
   const [profileData, setProfileData] = useState({
@@ -92,6 +95,35 @@ const ProfileScreen = () => {
     major: '',
     profilePicture: null as string | null,
   });
+
+  // Load user profile on component mount
+  useEffect(() => {
+    loadUserProfile();
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const profile = await UserService.getCurrentUserProfile();
+      if (profile) {
+        setUserProfile(profile);
+        setProfileData({
+          firstName: profile.first_name,
+          lastName: profile.last_name,
+          email: profile.school_email,
+          phone: profile.phone_number,
+          birthday: profile.birthday,
+          year: 'Freshman', // You might want to add this to your user profile
+          major: '', // You might want to add this to your user profile
+          profilePicture: profile.profile_picture
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      Alert.alert('Error', 'Failed to load user profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const toggleMenu = () => {
     if (menuVisible) {
@@ -224,59 +256,72 @@ const ProfileScreen = () => {
       quality: 1,
     });
 
-    if (!result.canceled) {
-      handleProfileChange('profilePicture', result.assets[0].uri);
+    if (!result.canceled && userProfile) {
+      try {
+        const imageUrl = await UserService.uploadProfilePicture(userProfile.id, result.assets[0].uri);
+        if (imageUrl) {
+          const updatedProfile = await UserService.updateUserProfile(userProfile.id, {
+            profile_picture: imageUrl
+          });
+          if (updatedProfile) {
+            setUserProfile(updatedProfile);
+            handleProfileChange('profilePicture', imageUrl);
+          }
+        }
+      } catch (error) {
+        console.error('Error uploading profile picture:', error);
+        Alert.alert('Error', 'Failed to upload profile picture');
+      }
     }
   };
 
-  const handleSaveProfile = () => {
-    // Check mandatory fields including profile picture
-    const mandatoryFields = ['firstName', 'lastName', 'email', 'phone', 'profilePicture'];
-    const emptyFields = mandatoryFields.filter(field => !profileData[field as keyof typeof profileData]);
+  const handleSaveProfile = async () => {
+    if (!userProfile) return;
 
-    if (emptyFields.length > 0) {
-      const missingFields = emptyFields.map(field => 
-        field === 'profilePicture' ? 'Profile Picture' : field
-      ).join(', ');
-      Alert.alert('Required Fields', `Please fill in all required fields: ${missingFields}`);
-      return;
+    try {
+      const updates = {
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        school_email: profileData.email,
+        phone_number: profileData.phone,
+        birthday: profileData.birthday
+      };
+
+      const updatedProfile = await UserService.updateUserProfile(userProfile.id, updates);
+      if (updatedProfile) {
+        setUserProfile(updatedProfile);
+        Alert.alert('Success', 'Profile updated successfully!');
+        toggleProfile();
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile');
     }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(profileData.email)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
-      return;
-    }
-
-    Alert.alert('Success', 'Profile updated successfully!');
-    toggleProfile();
   };
 
-  const handleApplyCode = () => {
-    // Example discount codes
-    const validCodes = {
-      'STUDENT10': 10,
-      'WELCOME20': 20,
-      'GAMEDAY': 15,
-      'USC25': 25
-    };
+  const handleApplyCode = async () => {
+    if (!userProfile) return;
 
     if (discountCode.trim() === '') {
       Alert.alert('Error', 'Please enter a discount code');
       return;
     }
 
-    const upperCode = discountCode.toUpperCase();
-    if (validCodes[upperCode as keyof typeof validCodes]) {
-      Alert.alert(
-        'Success!', 
-        `Discount code applied! You'll get ${validCodes[upperCode as keyof typeof validCodes]}% off your next ride.`
-      );
-      setDiscountCode('');
-      toggleDiscountCode();
-    } else {
-      Alert.alert('Invalid Code', 'This discount code is not valid or has expired.');
+    try {
+      const result = await UserService.applyDiscountCode(userProfile.id, discountCode);
+      if (result.success) {
+        Alert.alert(
+          'Success!', 
+          `Discount code applied! You'll get ${result.discount}% off your next ride.`
+        );
+        setDiscountCode('');
+        toggleDiscountCode();
+      } else {
+        Alert.alert('Invalid Code', 'This discount code is not valid or has expired.');
+      }
+    } catch (error) {
+      console.error('Error applying discount code:', error);
+      Alert.alert('Error', 'Failed to apply discount code');
     }
   };
 
@@ -294,19 +339,30 @@ const ProfileScreen = () => {
     }
   };
 
-  const handleSubmitFeedback = () => {
+  const handleSubmitFeedback = async () => {
+    if (!userProfile) return;
+
     if (feedbackText.trim() === '') {
       Alert.alert('Error', 'Please enter your feedback before submitting.');
       return;
     }
-    Alert.alert(
-      'Thank You!',
-      'Your feedback has been submitted successfully. We appreciate your input to help improve SafeRides.',
-      [{ text: 'OK', onPress: () => {
-        setFeedbackText('');
-        toggleFeedback();
-      }}]
-    );
+
+    try {
+      const success = await UserService.submitFeedback(userProfile.id, feedbackText);
+      if (success) {
+        Alert.alert(
+          'Thank You!',
+          'Your feedback has been submitted successfully. We appreciate your input to help improve SafeRides.',
+          [{ text: 'OK', onPress: () => {
+            setFeedbackText('');
+            toggleFeedback();
+          }}]
+        );
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert('Error', 'Failed to submit feedback');
+    }
   };
 
   const formatCardNumber = (text: string) => {
@@ -425,6 +481,25 @@ const ProfileScreen = () => {
       case 'feedback':
         toggleFeedback();
         break;
+    }
+  };
+
+  const handleSettingsChange = async (setting: 'darkMode' | 'notifications', value: boolean) => {
+    if (!userProfile) return;
+
+    try {
+      const success = await UserService.updateUserSettings(userProfile.id, {
+        darkMode: setting === 'darkMode' ? value : darkMode,
+        notifications: setting === 'notifications' ? value : notifications
+      });
+
+      if (success) {
+        if (setting === 'darkMode') setDarkMode(value);
+        if (setting === 'notifications') setNotifications(value);
+      }
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      Alert.alert('Error', 'Failed to update settings');
     }
   };
 
@@ -1210,7 +1285,7 @@ const ProfileScreen = () => {
                 {/* Dark Mode Toggle */}
                 <Pressable 
                   style={styles.settingItem}
-                  onPress={() => setDarkMode(!darkMode)}
+                  onPress={() => handleSettingsChange('darkMode', !darkMode)}
                 >
                   <View style={styles.settingLeft}>
                     <Ionicons name={darkMode ? "moon" : "moon-outline"} size={24} color="#003087" />
@@ -1224,7 +1299,7 @@ const ProfileScreen = () => {
                 {/* Notifications Toggle */}
                 <Pressable 
                   style={styles.settingItem}
-                  onPress={() => setNotifications(!notifications)}
+                  onPress={() => handleSettingsChange('notifications', !notifications)}
                 >
                   <View style={styles.settingLeft}>
                     <Ionicons name={notifications ? "notifications" : "notifications-off"} size={24} color="#003087" />
