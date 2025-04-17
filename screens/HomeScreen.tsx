@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, FlatList, Platform, SafeAreaView, Image, Animated, ScrollView, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, FlatList, Platform, SafeAreaView, Image, Animated, ScrollView, Modal, Dimensions, Alert } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
@@ -8,6 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import SideMenu from '../components/SideMenu';
+import SplitPaymentModal from '../components/SplitPaymentModal';
+import PaymentOptionsModal from '../components/PaymentOptionsModal';
+import RideService from '../services/RideService';
 
 interface Location {
   latitude: number;
@@ -127,6 +130,10 @@ const HomeScreen: React.FC = () => {
   const faqAnimation = useRef(new Animated.Value(0)).current;
   const [showInfo, setShowInfo] = useState(false);
   const infoAnimation = useRef(new Animated.Value(0)).current;
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [currentRideId, setCurrentRideId] = useState<string | null>(null);
+  const [rideCost, setRideCost] = useState<number>(0);
+  const rideService = RideService.getInstance();
 
   const menuIconStyle = {
     fontSize: 24,
@@ -279,6 +286,42 @@ const HomeScreen: React.FC = () => {
       title: 'Need Help?',
       content: 'Email us at support@saferides.app and we\'ll get back to you as quickly as possible.'
     }
+  };
+
+  const handleRequestRide = async () => {
+    if (!selectedRide || !destination) return;
+
+    const rideOption = rideOptions.find(option => option.id === selectedRide);
+    if (!rideOption) return;
+
+    try {
+      const ride = await rideService.createRide({
+        pickupLocation: currentAddress,
+        dropoffLocation: destinationName,
+        scheduledTime: new Date(),
+        totalCost: parseFloat(rideOption.price.replace('$', '')),
+        participants: [{
+          userId: 'current-user', // In real app, use actual user ID
+          username: 'You',
+          amount: parseFloat(rideOption.price.replace('$', '')),
+          status: 'pending',
+        }],
+      });
+
+      if (ride) {
+        setCurrentRideId(ride.id);
+        setRideCost(parseFloat(rideOption.price.replace('$', '')));
+        setShowPaymentOptions(true);
+      }
+    } catch (error) {
+      console.error('Error creating ride:', error);
+      Alert.alert('Error', 'Failed to create ride');
+    }
+  };
+
+  const handlePaymentComplete = () => {
+    setShowPaymentOptions(false);
+    // Additional logic after payment completion
   };
 
   return (
@@ -445,7 +488,7 @@ const HomeScreen: React.FC = () => {
               ))}
             </ScrollView>
             {selectedRide && (
-              <Pressable style={styles.requestButton} onPress={() => alert('Requesting ride...')}>
+              <Pressable style={styles.requestButton} onPress={handleRequestRide}>
                 <Text style={styles.requestButtonText}>Request Ride</Text>
           </Pressable>
             )}
@@ -645,6 +688,15 @@ const HomeScreen: React.FC = () => {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* Payment Options Modal */}
+      <PaymentOptionsModal
+        visible={showPaymentOptions}
+        onClose={() => setShowPaymentOptions(false)}
+        rideId={currentRideId || ''}
+        totalCost={rideCost}
+        onPaymentComplete={handlePaymentComplete}
+      />
 
       {/* Side Menu */}
       <SideMenu
