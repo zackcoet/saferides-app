@@ -1,0 +1,10 @@
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:iOS Simulator, arch:arm64, id:D21F0C4F-4B98-4719-A874-BF60DFEDC2B6, OS:18.4, name:iPhone 16 Plus }
+{ platform:iOS Simulator, arch:x86_64, id:D21F0C4F-4B98-4719-A874-BF60DFEDC2B6, OS:18.4, name:iPhone 16 Plus }
+** BUILD FAILED **
+
+
+The following build commands failed:
+	ScanDependencies /Users/zackcoetzee/Library/Developer/Xcode/DerivedData/saferidesrider-habztwrfedrxgzgwolbjeobdgcmr/Build/Intermediates.noindex/Pods.build/Debug-iphonesimulator/React-RuntimeHermes.build/Objects-normal/arm64/React-RuntimeHermes-dummy.o /Users/zackcoetzee/Desktop/SafeRides-rider/ios/Pods/Target\ Support\ Files/React-RuntimeHermes/React-RuntimeHermes-dummy.m normal arm64 objective-c com.apple.compilers.llvm.clang.1_0.compiler (in target 'React-RuntimeHermes' from project 'Pods')
+	Building workspace saferidesrider with scheme saferidesrider and configuration Debug
+(2 failures)
