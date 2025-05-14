@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "SafeRides",
+    "slug": "saferides-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.saferides.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyDxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXx"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.saferides.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXx"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "saferides-app",
+    "sdkVersion": "53.0.0"
+  }
+}
